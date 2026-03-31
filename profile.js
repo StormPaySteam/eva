@@ -22,22 +22,15 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
 
-const PRODUCTS = [
-  { id:'f1', cat:'flowers', name:'Хризантемы', price:1800, emoji:'🌼' },
-  { id:'f2', cat:'flowers', name:'Гортензии', price:2400, emoji:'💜' },
-  { id:'f3', cat:'flowers', name:'Роза', price:2200, emoji:'🌹' },
-  { id:'f4', cat:'flowers', name:'Кустовая роза', price:1900, emoji:'🌸' },
-  { id:'f5', cat:'flowers', name:'Лилии', price:2600, emoji:'🌷' },
-  { id:'f6', cat:'flowers', name:'Пионы', price:3200, emoji:'🌺' },
-  { id:'b1', cat:'balloons', name:'Фольгированные шары', price:350, emoji:'🎈' },
-  { id:'b2', cat:'balloons', name:'Воздушные шары', price:120, emoji:'🎀' },
-  { id:'b3', cat:'balloons', name:'Шар-гигант', price:850, emoji:'🎊' },
-  { id:'b4', cat:'balloons', name:'Связка шаров', price:600, emoji:'🎉' },
-  { id:'t1', cat:'toys', name:'Мишка с сердцем', price:1200, emoji:'🧸' },
-  { id:'t2', cat:'toys', name:'Зайка', price:950, emoji:'🐰' },
-  { id:'t3', cat:'toys', name:'Единорог', price:1500, emoji:'🦄' },
-  { id:'t4', cat:'toys', name:'Кот в цветах', price:1100, emoji:'🐱' },
-];
+let PRODUCTS = [];
+async function loadProducts() {
+  try {
+    const snap = await getDocs(query(collection(db, 'products'), orderBy('sortOrder', 'asc')));
+    PRODUCTS = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(p => p.active !== false);
+  } catch(e) {
+    PRODUCTS = [];
+  }
+}
 
 let currentUser = null;
 let userAddresses = [];
@@ -47,6 +40,7 @@ let userEvents = [];
 onAuthStateChanged(auth, async (user) => {
   if (!user) { window.location.href = 'index.html'; return; }
   currentUser = user;
+  await loadProducts();
   await loadProfile(user);
 });
 
