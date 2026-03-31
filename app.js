@@ -1,6 +1,6 @@
 // ===== EVA FLOWERS — MAIN APP =====
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, addDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -231,29 +231,51 @@ function openModal(id) { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
 // ===== AUTH =====
+const ADMIN_EMAIL = "eva@eva.com";
+
 onAuthStateChanged(auth, (user) => {
   currentUser = user;
   const btn = document.getElementById('authBtn');
   if (user) {
-    btn.innerHTML = `<img src="${user.photoURL || 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 40 40%22><circle cx=%2220%22 cy=%2220%22 r=%2220%22 fill=%22%23f9c8d4%22/><text x=%2220%22 y=%2226%22 font-size=%2218%22 text-anchor=%22middle%22>🌸</text></svg>'}" style="width:28px;height:28px;border-radius:50%;object-fit:cover" alt=""/>`;
-    btn.onclick = () => { window.location.href = 'profile.html'; };
+    const isAdmin = user.email === ADMIN_EMAIL;
+    btn.innerHTML = isAdmin
+      ? `<span style="font-size:18px">⚙️</span>`
+      : `<img src="${user.photoURL || 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 40 40%22><circle cx=%2220%22 cy=%2220%22 r=%2220%22 fill=%22%23f9c8d4%22/><text x=%2220%22 y=%2226%22 font-size=%2218%22 text-anchor=%22middle%22>🌸</text></svg>'}" style="width:28px;height:28px;border-radius:50%;object-fit:cover" alt=""/>`;
+    btn.onclick = () => {
+      window.location.href = isAdmin ? 'admin.html' : 'profile.html';
+    };
   } else {
     btn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`;
     btn.onclick = () => openModal('authModal');
   }
 });
 
+// Handle redirect result on page load (for mobile)
+getRedirectResult(auth).then(async (result) => {
+  if (!result) return;
+  const user = result.user;
+  await setDoc(doc(db, 'users', user.uid), {
+    email: user.email, displayName: user.displayName,
+    photoURL: user.photoURL, createdAt: serverTimestamp()
+  }, { merge: true });
+  showToast(`Привет, ${user.displayName}! 🌸`);
+}).catch(e => { if (e.code !== 'auth/no-current-user') console.error(e); });
+
 document.getElementById('googleSignIn').onclick = async () => {
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
   try {
-    const result = await signInWithPopup(auth, googleProvider);
-    const user = result.user;
-    // Save user to Firestore
-    await setDoc(doc(db, 'users', user.uid), {
-      email: user.email, displayName: user.displayName,
-      photoURL: user.photoURL, createdAt: serverTimestamp()
-    }, { merge: true });
-    closeModal('authModal');
-    showToast(`Привет, ${user.displayName}! 🌸`);
+    if (isMobile) {
+      await signInWithRedirect(auth, googleProvider);
+    } else {
+      const result = await signInWithPopup(auth, googleProvider);
+      const user = result.user;
+      await setDoc(doc(db, 'users', user.uid), {
+        email: user.email, displayName: user.displayName,
+        photoURL: user.photoURL, createdAt: serverTimestamp()
+      }, { merge: true });
+      closeModal('authModal');
+      showToast(`Привет, ${user.displayName}! 🌸`);
+    }
   } catch(e) { showToast('Ошибка входа: ' + e.message); }
 };
 

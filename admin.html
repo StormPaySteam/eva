@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Админ — EVA Цветочный Магазин</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="style.css"/>
+  <style>
+    /* ===== ADMIN STYLES ===== */
+    body { background: var(--bg); }
+
+    .admin-layout {
+      display: grid;
+      grid-template-columns: 240px 1fr;
+      min-height: 100vh;
+      padding-top: 72px;
+    }
+
+    /* Sidebar */
+    .admin-sidebar {
+      background: var(--white);
+      border-right: 1px solid var(--pink-light);
+      padding: 28px 0;
+      position: sticky;
+      top: 72px;
+      height: calc(100vh - 72px);
+      overflow-y: auto;
+    }
+    .admin-brand {
+      padding: 0 24px 24px;
+      border-bottom: 1px solid var(--pink-light);
+      margin-bottom: 16px;
+    }
+    .admin-brand h2 {
+      font-family: var(--font-display);
+      font-size: 1.3rem;
+      color: var(--pink);
+      margin: 0 0 4px;
+    }
+    .admin-brand p { font-size: .78rem; color: var(--gray); margin: 0; }
+
+    .admin-nav-btn {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      padding: 12px 24px;
+      border: none;
+      background: none;
+      font-family: var(--font-body);
+      font-size: .9rem;
+      color: var(--text);
+      cursor: pointer;
+      text-align: left;
+      transition: var(--transition);
+      border-left: 3px solid transparent;
+    }
+    .admin-nav-btn:hover { background: var(--pink-pale); color: var(--pink); }
+    .admin-nav-btn.active {
+      background: var(--pink-pale);
+      color: var(--pink);
+      border-left-color: var(--pink);
+      font-weight: 500;
+    }
+    .admin-nav-btn .nav-badge {
+      margin-left: auto;
+      background: var(--pink);
+      color: #fff;
+      font-size: .7rem;
+      padding: 2px 7px;
+      border-radius: 30px;
+      min-width: 20px;
+      text-align: center;
+    }
+
+    /* Main */
+    .admin-main { padding: 32px; overflow-y: auto; }
+
+    .admin-page { display: none; }
+    .admin-page.active { display: block; }
+
+    .admin-page-title {
+      font-family: var(--font-display);
+      font-size: 1.6rem;
+      color: var(--text);
+      margin: 0 0 24px;
+    }
+
+    /* Stats */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+    .stat-card {
+      background: var(--white);
+      border: 1px solid var(--pink-light);
+      border-radius: 16px;
+      padding: 20px 24px;
+    }
+    .stat-label { font-size: .78rem; color: var(--gray); margin-bottom: 8px; text-transform: uppercase; letter-spacing: .05em; }
+    .stat-value { font-size: 2rem; font-weight: 700; color: var(--pink); font-family: var(--font-display); }
+    .stat-sub { font-size: .8rem; color: var(--gray); margin-top: 4px; }
+
+    /* Filters */
+    .admin-filters {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+    .filter-btn {
+      padding: 8px 18px;
+      border-radius: 30px;
+      border: 1px solid var(--pink-light);
+      background: var(--white);
+      font-family: var(--font-body);
+      font-size: .85rem;
+      cursor: pointer;
+      transition: var(--transition);
+      color: var(--text);
+    }
+    .filter-btn:hover, .filter-btn.active {
+      background: var(--pink);
+      color: #fff;
+      border-color: var(--pink);
+    }
+
+    /* Search */
+    .admin-search {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .admin-search input {
+      flex: 1;
+      padding: 10px 16px;
+      border: 1px solid var(--pink-light);
+      border-radius: 10px;
+      font-family: var(--font-body);
+      font-size: .9rem;
+      background: var(--white);
+      outline: none;
+    }
+    .admin-search input:focus { border-color: var(--pink); }
+
+    /* Order cards */
+    .admin-order-card {
+      background: var(--white);
+      border: 1px solid var(--pink-light);
+      border-radius: 16px;
+      padding: 20px 24px;
+      margin-bottom: 14px;
+      transition: var(--transition);
+    }
+    .admin-order-card:hover { box-shadow: var(--shadow); }
+
+    .aoc-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .aoc-id { font-size: .8rem; color: var(--gray); font-family: monospace; }
+    .aoc-date { font-size: .82rem; color: var(--gray); }
+
+    .aoc-body { margin-bottom: 14px; }
+    .aoc-customer {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    .aoc-customer span { font-size: .85rem; color: var(--text); }
+    .aoc-customer span strong { color: var(--pink); }
+    .aoc-items { font-size: .83rem; color: var(--gray); margin-bottom: 6px; }
+    .aoc-total { font-size: 1.1rem; font-weight: 700; color: var(--pink); }
+    .aoc-address { font-size: .82rem; color: var(--gray); margin-top: 6px; }
+    .aoc-delivery-time { font-size: .82rem; color: var(--text); margin-top: 4px; }
+    .aoc-note { font-size: .82rem; color: var(--gray); font-style: italic; margin-top: 6px; background: var(--pink-pale); padding: 8px 12px; border-radius: 8px; }
+
+    .aoc-footer {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      border-top: 1px solid var(--pink-light);
+      padding-top: 14px;
+    }
+
+    /* Status select */
+    .status-select {
+      padding: 8px 14px;
+      border-radius: 30px;
+      border: 1px solid var(--pink-light);
+      font-family: var(--font-body);
+      font-size: .82rem;
+      background: var(--white);
+      cursor: pointer;
+      outline: none;
+      color: var(--text);
+    }
+    .status-select:focus { border-color: var(--pink); }
+
+    /* Photo input */
+    .photo-input-wrap {
+      display: flex;
+      gap: 8px;
+      flex: 1;
+    }
+    .photo-input-wrap input {
+      flex: 1;
+      padding: 8px 14px;
+      border: 1px solid var(--pink-light);
+      border-radius: 10px;
+      font-family: var(--font-body);
+      font-size: .82rem;
+      background: var(--white);
+      outline: none;
+      min-width: 0;
+    }
+    .photo-input-wrap input:focus { border-color: var(--pink); }
+    .photo-input-wrap input::placeholder { color: #ccc; }
+
+    .aoc-photo {
+      margin-top: 12px;
+    }
+    .aoc-photo img {
+      width: 100%;
+      max-width: 180px;
+      border-radius: 10px;
+      border: 2px solid var(--pink-light);
+    }
+    .aoc-photo-label { font-size: .75rem; color: var(--gray); margin-bottom: 6px; }
+
+    /* Status badges */
+    .badge {
+      padding: 4px 12px;
+      border-radius: 30px;
+      font-size: .78rem;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    .badge-pending  { background: #fff3cd; color: #856404; }
+    .badge-assembly { background: #cff4fc; color: #055160; }
+    .badge-delivery { background: #d1e7dd; color: #0a3622; }
+    .badge-done     { background: #d1ecf1; color: #0c5460; }
+
+    /* Products tab */
+    .admin-product-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 20px;
+      background: var(--white);
+      border: 1px solid var(--pink-light);
+      border-radius: 14px;
+      margin-bottom: 10px;
+    }
+    .apc-emoji { font-size: 1.8rem; width: 40px; text-align: center; }
+    .apc-info { flex: 1; }
+    .apc-name { font-weight: 500; }
+    .apc-cat { font-size: .78rem; color: var(--gray); }
+    .apc-price { font-weight: 600; color: var(--pink); min-width: 80px; text-align: right; }
+    .apc-price input {
+      width: 80px;
+      padding: 6px 10px;
+      border: 1px solid var(--pink-light);
+      border-radius: 8px;
+      font-family: var(--font-body);
+      font-size: .9rem;
+      text-align: right;
+      outline: none;
+    }
+    .apc-price input:focus { border-color: var(--pink); }
+
+    /* Loading */
+    .admin-loading {
+      text-align: center;
+      padding: 60px;
+      color: var(--gray);
+      font-size: 1rem;
+    }
+
+    /* Empty */
+    .admin-empty {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--gray);
+    }
+    .admin-empty .em-icon { font-size: 3rem; margin-bottom: 16px; }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .admin-layout { grid-template-columns: 1fr; }
+      .admin-sidebar { position: static; height: auto; }
+      .admin-nav-btn { padding: 10px 16px; }
+      .admin-main { padding: 20px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<header id="header">
+  <div class="header-inner">
+    <a href="index.html" class="logo-wrap">
+      <img src="logo.png" alt="EVA" class="logo-img" onerror="this.style.display='none';document.querySelector('.logo-text').style.display='block'"/>
+      <span class="logo-text" style="display:none">EVA</span>
+    </a>
+    <nav class="nav">
+      <a href="index.html">← Магазин</a>
+    </nav>
+    <div class="header-actions">
+      <button class="icon-btn" id="logoutBtn" title="Выйти">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+          <polyline points="16,17 21,12 16,7"/>
+          <line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<div class="admin-layout">
+
+  <!-- SIDEBAR -->
+  <aside class="admin-sidebar">
+    <div class="admin-brand">
+      <h2>🌸 Админ-панель</h2>
+      <p id="adminEmail">Загрузка…</p>
+    </div>
+
+    <button class="admin-nav-btn active" data-page="dashboard">
+      📊 Дашборд
+    </button>
+    <button class="admin-nav-btn" data-page="orders">
+      📦 Заказы
+      <span class="nav-badge" id="pendingBadge">0</span>
+    </button>
+    <button class="admin-nav-btn" data-page="products">
+      🌸 Товары
+    </button>
+    <button class="admin-nav-btn" data-page="customers">
+      👥 Клиенты
+    </button>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="admin-main">
+
+    <!-- DASHBOARD -->
+    <div class="admin-page active" id="page-dashboard">
+      <h2 class="admin-page-title">Дашборд</h2>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Всего заказов</div>
+          <div class="stat-value" id="stat-total">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Ожидают обработки</div>
+          <div class="stat-value" id="stat-pending">—</div>
+          <div class="stat-sub">Нужно принять</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">В доставке</div>
+          <div class="stat-value" id="stat-delivery">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Выручка</div>
+          <div class="stat-value" id="stat-revenue">—</div>
+          <div class="stat-sub">По завершённым</div>
+        </div>
+      </div>
+
+      <h3 style="font-family:var(--font-display);font-size:1.1rem;margin-bottom:16px;color:var(--text)">
+        Новые заказы (ожидают обработки)
+      </h3>
+      <div id="dashNewOrders">
+        <div class="admin-loading">Загрузка…</div>
+      </div>
+    </div>
+
+    <!-- ORDERS -->
+    <div class="admin-page" id="page-orders">
+      <h2 class="admin-page-title">Все заказы</h2>
+
+      <div class="admin-filters" id="orderFilters">
+        <button class="filter-btn active" data-status="all">Все</button>
+        <button class="filter-btn" data-status="pending">🕐 Новые</button>
+        <button class="filter-btn" data-status="assembly">🌿 Сборка</button>
+        <button class="filter-btn" data-status="delivery">🚚 Доставка</button>
+        <button class="filter-btn" data-status="done">✅ Выполнены</button>
+      </div>
+
+      <div class="admin-search">
+        <input type="text" id="orderSearch" placeholder="Поиск по имени, телефону, адресу…" oninput="filterOrders()"/>
+      </div>
+
+      <div id="ordersListAdmin">
+        <div class="admin-loading">Загрузка заказов…</div>
+      </div>
+    </div>
+
+    <!-- PRODUCTS -->
+    <div class="admin-page" id="page-products">
+      <h2 class="admin-page-title">Товары</h2>
+      <p style="color:var(--gray);margin-bottom:20px;font-size:.9rem">Редактирование цен (сохраняется локально). Для постоянных изменений обновите массив PRODUCTS в app.js</p>
+      <div id="productsList"></div>
+    </div>
+
+    <!-- CUSTOMERS -->
+    <div class="admin-page" id="page-customers">
+      <h2 class="admin-page-title">Клиенты</h2>
+      <div id="customersList">
+        <div class="admin-loading">Загрузка клиентов…</div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module" src="admin.js"></script>
+</body>
+</html>

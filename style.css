@@ -48,7 +48,7 @@ body {
   font-family: var(--font-display); font-size: 1.8rem; font-weight: 600;
   color: var(--rose); letter-spacing: .05em;
 }
-.nav { display:flex; gap:28px; margin-left: auto; }
+.nav { display:flex; gap:28px; margin-left: auto; flex-shrink:0; }
 .nav a {
   font-size: .9rem; font-weight: 500; letter-spacing: .04em;
   text-decoration: none; color: var(--gray);
@@ -56,7 +56,7 @@ body {
 }
 .nav a:hover { color: var(--pink); }
 
-.header-actions { display:flex; gap:8px; align-items:center; }
+.header-actions { display:flex; gap:8px; align-items:center; margin-left:auto; flex-shrink:0; }
 .icon-btn {
   position: relative;
   width: 40px; height: 40px;
@@ -64,8 +64,16 @@ body {
   border: none; background: transparent; cursor: pointer;
   color: var(--dark); border-radius: 50%;
   transition: var(--transition);
+  overflow: hidden;
+  flex-shrink: 0;
 }
 .icon-btn:hover { background: var(--pink-pale); color: var(--pink); }
+.icon-btn img {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
 
 .cart-badge {
   position:absolute; top:4px; right:4px;
@@ -610,4 +618,8 @@ footer {
   .hero-title { font-size:2.8rem; }
   .cart-drawer { width:100vw; }
   .modal-box { padding:28px 20px; }
+  .header-inner { padding: 0 12px; gap: 0; }
+  .header-actions { gap: 4px; }
+  .logo-img { height: 36px; }
+  .logo-text { font-size: 1.4rem; }
 }
