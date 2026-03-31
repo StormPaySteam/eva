@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Профиль — EVA Цветочный Магазин</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body class="profile-page">
+
+<header id="header">
+  <div class="header-inner">
+    <a href="index.html" class="logo-wrap">
+      <img src="logo.png" alt="EVA" class="logo-img" onerror="this.style.display='none';document.querySelector('.logo-text').style.display='block'"/>
+      <span class="logo-text" style="display:none">EVA</span>
+    </a>
+    <nav class="nav">
+      <a href="index.html#flowers">Цветы</a>
+      <a href="index.html#balloons">Шары</a>
+      <a href="index.html#toys">Игрушки</a>
+    </nav>
+    <div class="header-actions">
+      <a href="index.html" class="icon-btn" title="Магазин">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
+      </a>
+      <button class="icon-btn" id="logoutBtn" title="Выйти">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="profile-main">
+  <!-- SIDEBAR -->
+  <aside class="profile-sidebar">
+    <div class="avatar-wrap">
+      <div class="avatar-ring">
+        <img id="avatarImg" src="" alt="Аватар" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2250%22 fill=%22%23f9c8d4%22/><text x=%2250%22 y=%2265%22 font-size=%2240%22 text-anchor=%22middle%22>🌸</text></svg>'"/>
+      </div>
+      <button class="avatar-change-btn" id="avatarChangeBtn" title="Сменить аватар">📷</button>
+      <input type="file" id="avatarInput" accept="image/*" style="display:none"/>
+    </div>
+    <div class="profile-name-wrap">
+      <h2 id="sidebarName">Загрузка…</h2>
+      <p id="sidebarNick" class="profile-nick"></p>
+    </div>
+    <nav class="profile-nav">
+      <button class="pnav-btn active" data-tab="info">👤 Мой профиль</button>
+      <button class="pnav-btn" data-tab="orders">📦 Заказы</button>
+      <button class="pnav-btn" data-tab="cart">🛒 Корзина</button>
+      <button class="pnav-btn" data-tab="addresses">📍 Адресная книга</button>
+      <button class="pnav-btn" data-tab="calendar">📅 Календарь событий</button>
+      <button class="pnav-btn" data-tab="archive">🗂 Архив букетов</button>
+      <button class="pnav-btn" data-tab="favorites">❤️ Избранное</button>
+    </nav>
+  </aside>
+
+  <!-- CONTENT -->
+  <div class="profile-content">
+
+    <!-- INFO TAB -->
+    <div class="tab-panel active" id="tab-info">
+      <h3 class="tab-title">Личная информация</h3>
+      <div class="info-grid">
+        <div class="info-card">
+          <label>ФИО</label>
+          <input type="text" id="p_fio" placeholder="Иван Иванович Иванов"/>
+        </div>
+        <div class="info-card">
+          <label>Никнейм</label>
+          <input type="text" id="p_nick" placeholder="@evafan"/>
+        </div>
+        <div class="info-card">
+          <label>Email</label>
+          <input type="email" id="p_email" disabled/>
+        </div>
+        <div class="info-card">
+          <label>Телефон</label>
+          <input type="tel" id="p_phone" placeholder="+7 (___) ___-__-__"/>
+        </div>
+        <div class="info-card full">
+          <label>Любимые цветы</label>
+          <input type="text" id="p_flowers" placeholder="Розы, пионы, хризантемы…"/>
+        </div>
+        <div class="info-card full">
+          <label>⚠️ Аллергии</label>
+          <input type="text" id="p_allergies" placeholder="Нет аллергий / лилии…"/>
+        </div>
+      </div>
+      <button class="btn-primary" id="saveProfileBtn">Сохранить</button>
+    </div>
+
+    <!-- ORDERS TAB -->
+    <div class="tab-panel" id="tab-orders">
+      <h3 class="tab-title">История заказов</h3>
+      <div id="ordersContainer">
+        <div class="empty-state">📦 Заказов пока нет</div>
+      </div>
+    </div>
+
+    <!-- CART TAB -->
+    <div class="tab-panel" id="tab-cart">
+      <h3 class="tab-title">Корзина</h3>
+      <div id="profileCartContainer">
+        <div class="empty-state">🛒 Корзина пуста</div>
+      </div>
+    </div>
+
+    <!-- ADDRESSES TAB -->
+    <div class="tab-panel" id="tab-addresses">
+      <h3 class="tab-title">Адресная книга</h3>
+      <button class="btn-primary small" id="addAddressBtn">+ Добавить адрес</button>
+      <div id="addressesContainer"></div>
+      <!-- Add Address Form -->
+      <div class="address-form" id="addressForm" style="display:none">
+        <h4>Новый адрес</h4>
+        <div class="form-group">
+          <label>Название (Дом / Офис / Родители…)</label>
+          <input type="text" id="addr_label" placeholder="Дом"/>
+        </div>
+        <div class="form-group">
+          <label>Адрес</label>
+          <input type="text" id="addr_address" placeholder="ул. Цветочная, д.1, кв.2"/>
+        </div>
+        <div class="form-group">
+          <label>Телефон получателя</label>
+          <input type="tel" id="addr_phone" placeholder="+7 (___) ___-__-__"/>
+        </div>
+        <div class="form-group">
+          <label>Имя получателя</label>
+          <input type="text" id="addr_recipient" placeholder="Мама"/>
+        </div>
+        <div class="form-row">
+          <button class="btn-primary" id="saveAddressBtn">Сохранить</button>
+          <button class="btn-ghost" id="cancelAddressBtn">Отмена</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CALENDAR TAB -->
+    <div class="tab-panel" id="tab-calendar">
+      <h3 class="tab-title">Календарь событий</h3>
+      <button class="btn-primary small" id="addEventBtn">+ Добавить событие</button>
+      <div id="eventsContainer"></div>
+      <div class="event-form" id="eventForm" style="display:none">
+        <h4>Новое событие</h4>
+        <div class="form-group">
+          <label>Название</label>
+          <input type="text" id="ev_title" placeholder="День рождения мамы"/>
+        </div>
+        <div class="form-group">
+          <label>Дата</label>
+          <input type="date" id="ev_date"/>
+        </div>
+        <div class="form-group">
+          <label>Повторять ежегодно</label>
+          <input type="checkbox" id="ev_repeat" style="width:auto"/>
+        </div>
+        <div class="form-group">
+          <label>Напоминание (за N дней)</label>
+          <input type="number" id="ev_remind" placeholder="3" min="0" max="30"/>
+        </div>
+        <div class="form-group">
+          <label>Связать с адресом</label>
+          <select id="ev_address"><option value="">— Выберите адрес —</option></select>
+        </div>
+        <div class="form-row">
+          <button class="btn-primary" id="saveEventBtn">Сохранить</button>
+          <button class="btn-ghost" id="cancelEventBtn">Отмена</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ARCHIVE TAB -->
+    <div class="tab-panel" id="tab-archive">
+      <h3 class="tab-title">Архив букетов</h3>
+      <p class="tab-desc">Здесь хранятся фото доставленных букетов и контакты получателей</p>
+      <div id="archiveContainer">
+        <div class="empty-state">🗂 Архив пуст</div>
+      </div>
+    </div>
+
+    <!-- FAVORITES TAB -->
+    <div class="tab-panel" id="tab-favorites">
+      <h3 class="tab-title">Избранное</h3>
+      <div id="favoritesContainer">
+        <div class="empty-state">❤️ Нет избранных товаров</div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script type="module" src="profile.js"></script>
+</body>
+</html>

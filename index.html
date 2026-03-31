@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>EVA — Цветочный Магазин</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+
+<!-- HEADER -->
+<header id="header">
+  <div class="header-inner">
+    <a href="index.html" class="logo-wrap">
+      <img src="logo.png" alt="EVA" class="logo-img" onerror="this.style.display='none';document.querySelector('.logo-text').style.display='block'"/>
+      <span class="logo-text" style="display:none">EVA</span>
+    </a>
+    <nav class="nav">
+      <a href="#flowers">Цветы</a>
+      <a href="#balloons">Шары</a>
+      <a href="#toys">Игрушки</a>
+      <a href="#about">О нас</a>
+    </nav>
+    <div class="header-actions">
+      <button class="icon-btn" id="searchToggle" title="Поиск">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </button>
+      <button class="icon-btn" id="cartToggle" title="Корзина">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+        <span class="cart-badge" id="cartBadge">0</span>
+      </button>
+      <button class="icon-btn" id="authBtn" title="Войти">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      </button>
+    </div>
+  </div>
+  <!-- Search bar -->
+  <div class="search-bar" id="searchBar">
+    <input type="text" id="searchInput" placeholder="Поиск цветов, шаров, игрушек…" />
+    <button onclick="doSearch()">Найти</button>
+  </div>
+</header>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg">
+    <div class="petal p1">🌸</div>
+    <div class="petal p2">🌹</div>
+    <div class="petal p3">🌷</div>
+    <div class="petal p4">🌸</div>
+    <div class="petal p5">🌹</div>
+  </div>
+  <div class="hero-content">
+    <p class="hero-eyebrow">Цветочный магазин</p>
+    <h1 class="hero-title">Подарите<br/><em>живую</em> красоту</h1>
+    <p class="hero-sub">Свежие цветы, шары и подарки с доставкой по городу</p>
+    <div class="hero-btns">
+      <a href="#flowers" class="btn-primary">Смотреть каталог</a>
+      <a href="#about" class="btn-ghost">О магазине</a>
+    </div>
+  </div>
+</section>
+
+<!-- CATEGORIES STRIP -->
+<section class="cats-strip">
+  <button class="cat-chip active" data-cat="all">Всё</button>
+  <button class="cat-chip" data-cat="flowers">🌸 Цветы</button>
+  <button class="cat-chip" data-cat="balloons">🎈 Шары</button>
+  <button class="cat-chip" data-cat="toys">🧸 Игрушки</button>
+</section>
+
+<!-- FLOWERS -->
+<section class="section" id="flowers">
+  <div class="section-header">
+    <h2>Цветы</h2>
+    <p>Свежие букеты на любой вкус</p>
+  </div>
+  <div class="grid" id="flowersGrid"></div>
+</section>
+
+<!-- BALLOONS -->
+<section class="section" id="balloons">
+  <div class="section-header">
+    <h2>Шары</h2>
+    <p>Фольгированные и воздушные</p>
+  </div>
+  <div class="grid" id="balloonsGrid"></div>
+</section>
+
+<!-- TOYS -->
+<section class="section" id="toys">
+  <div class="section-header">
+    <h2>Игрушки</h2>
+    <p>Мягкие подарки к букету</p>
+  </div>
+  <div class="grid" id="toysGrid"></div>
+</section>
+
+<!-- ABOUT -->
+<section class="about-section" id="about">
+  <div class="about-inner">
+    <div class="about-text">
+      <h2>О нас</h2>
+      <p>Цветочный магазин <strong>EVA</strong> — это место, где каждый букет создаётся с любовью. Мы работаем только со свежими цветами от проверенных поставщиков.</p>
+      <ul class="about-perks">
+        <li>🚚 Доставка в день заказа</li>
+        <li>📸 Фото букета перед отправкой</li>
+        <li>💐 Собственный флорист</li>
+        <li>🎁 Подарочная упаковка бесплатно</li>
+      </ul>
+    </div>
+    <div class="about-visual">
+      <div class="about-card">
+        <span class="big-emoji">💐</span>
+        <p>Более 500 заказов в месяц</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <strong>EVA</strong> — Цветочный Магазин
+      <p>© 2025 Все права защищены</p>
+    </div>
+    <div class="footer-links">
+      <a href="#">Политика конфиденциальности</a>
+      <a href="#">Условия доставки</a>
+      <a href="#">Контакты</a>
+    </div>
+  </div>
+</footer>
+
+<!-- CART DRAWER -->
+<div class="overlay" id="overlay"></div>
+<aside class="cart-drawer" id="cartDrawer">
+  <div class="drawer-head">
+    <h3>Корзина</h3>
+    <button class="close-btn" id="cartClose">✕</button>
+  </div>
+  <div class="cart-items" id="cartItems"></div>
+  <div class="cart-footer">
+    <div class="cart-total">Итого: <strong id="cartTotal">0 ₽</strong></div>
+    <button class="btn-primary full" id="checkoutBtn">Оформить заказ</button>
+  </div>
+</aside>
+
+<!-- AUTH MODAL -->
+<div class="modal" id="authModal">
+  <div class="modal-box">
+    <button class="modal-close" id="authModalClose">✕</button>
+    <div id="authContent">
+      <h2>Войти в EVA</h2>
+      <p class="modal-sub">Войдите через Google чтобы сохранять заказы, адреса и избранное</p>
+      <button class="google-btn" id="googleSignIn">
+        <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+        Войти через Google
+      </button>
+      <div class="divider">или</div>
+      <div class="form-group">
+        <input type="email" id="loginEmail" placeholder="Email"/>
+        <input type="password" id="loginPassword" placeholder="Пароль"/>
+        <button class="btn-primary full" id="emailSignIn">Войти</button>
+        <button class="btn-ghost full" id="switchToRegister">Нет аккаунта? Зарегистрироваться</button>
+      </div>
+    </div>
+    <div id="registerContent" style="display:none">
+      <h2>Регистрация</h2>
+      <div class="form-group">
+        <input type="text" id="regName" placeholder="Имя"/>
+        <input type="email" id="regEmail" placeholder="Email"/>
+        <input type="password" id="regPassword" placeholder="Пароль"/>
+        <button class="btn-primary full" id="emailRegister">Создать аккаунт</button>
+        <button class="btn-ghost full" id="switchToLogin">Уже есть аккаунт? Войти</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CHECKOUT MODAL -->
+<div class="modal" id="checkoutModal">
+  <div class="modal-box large">
+    <button class="modal-close" id="checkoutClose">✕</button>
+    <h2>Оформление заказа</h2>
+    <div class="checkout-form">
+      <div class="form-group">
+        <label>Имя получателя</label>
+        <input type="text" id="co_name" placeholder="Иван Иванов"/>
+      </div>
+      <div class="form-group">
+        <label>Телефон</label>
+        <input type="tel" id="co_phone" placeholder="+7 (___) ___-__-__"/>
+      </div>
+      <div class="form-group">
+        <label>Адрес доставки</label>
+        <input type="text" id="co_address" placeholder="ул. Цветочная, д. 1, кв. 2"/>
+      </div>
+      <div class="form-group">
+        <label>Дата и время доставки</label>
+        <input type="datetime-local" id="co_datetime"/>
+      </div>
+      <div class="form-group">
+        <label>Пожелания к букету</label>
+        <textarea id="co_note" placeholder="Открытка, особые пожелания…" rows="3"></textarea>
+      </div>
+      <div class="payment-notice">
+        <span>💳</span>
+        <p>Оплата через ЮMoney будет доступна в ближайшее время. Сейчас заказ фиксируется и менеджер свяжется с вами.</p>
+      </div>
+      <button class="btn-primary full" id="placeOrderBtn">Подтвердить заказ</button>
+    </div>
+  </div>
+</div>
+
+<!-- PRODUCT MODAL -->
+<div class="modal" id="productModal">
+  <div class="modal-box large">
+    <button class="modal-close" id="productModalClose">✕</button>
+    <div class="product-modal-inner" id="productModalContent"></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
