@@ -72,6 +72,24 @@
   <button class="cat-chip" data-cat="toys">🧸 Игрушки</button>
 </section>
 
+<!-- SORT + PROMO BAR -->
+<div class="sort-bar" id="sortBar">
+  <div class="sort-bar-inner">
+    <div class="sort-group">
+      <span class="sort-label">Сортировка:</span>
+      <button class="sort-chip active" data-sort="default">По умолчанию</button>
+      <button class="sort-chip" data-sort="price-asc">Дешевле</button>
+      <button class="sort-chip" data-sort="price-desc">Дороже</button>
+      <button class="sort-chip" data-sort="rating">По рейтингу</button>
+    </div>
+    <div class="promo-group">
+      <input type="text" id="promoInput" placeholder="Промокод" class="promo-input"/>
+      <button class="btn-primary small" id="promoApplyBtn">Применить</button>
+      <span id="promoStatus" class="promo-status"></span>
+    </div>
+  </div>
+</div>
+
 <!-- FLOWERS -->
 <section class="section" id="flowers">
   <div class="section-header">
@@ -207,6 +225,14 @@
       <div class="form-group">
         <label>Пожелания к букету</label>
         <textarea id="co_note" placeholder="Открытка, особые пожелания…" rows="3"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Промокод</label>
+        <div style="display:flex;gap:10px">
+          <input type="text" id="co_promo" placeholder="Введите промокод" style="flex:1"/>
+          <button class="btn-ghost small" id="coPromoApplyBtn" type="button">Применить</button>
+        </div>
+        <span id="coPromoStatus" style="font-size:.82rem;margin-top:4px;display:block"></span>
       </div>
       <div class="payment-notice">
         <span>💳</span>
