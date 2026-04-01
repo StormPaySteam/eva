@@ -43,14 +43,17 @@ let modalQty = 1;
 
 async function loadProducts() {
   try {
-    const snap = await getDocs(query(collection(db, 'products'), orderBy('sortOrder', 'asc')));
+    const snap = await getDocs(collection(db, 'products'));
     if (snap.empty) {
       await seedProducts();
     } else {
-      PRODUCTS = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      PRODUCTS = snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .filter(p => p.active !== false)
+        .sort((a, b) => (a.sortOrder ?? 999) - (b.sortOrder ?? 999));
     }
   } catch(e) {
-    console.warn('Firestore unavailable, using defaults');
+    console.warn('Firestore unavailable, using defaults', e);
     PRODUCTS = [...DEFAULT_PRODUCTS];
   }
   renderCatalog();
