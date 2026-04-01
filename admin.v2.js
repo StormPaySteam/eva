@@ -3,7 +3,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import {
   getFirestore, collection, getDocs, doc, updateDoc, deleteDoc,
-  addDoc, setDoc, serverTimestamp
+  addDoc, setDoc, serverTimestamp, query, where, orderBy
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 // ===== CLOUDINARY =====
 const CLOUDINARY_CLOUD = 'diu2fuoda';
@@ -57,8 +57,13 @@ onAuthStateChanged(auth, async (user) => {
     return;
   }
   document.getElementById('adminEmail').textContent = user.email;
-  await Promise.all([loadOrders(), loadProducts()]);
-  await loadCustomers();
+
+  // Run all loaders in parallel — don't chain so one failure can't block others
+  loadOrders().catch(e => console.error('loadOrders error:', e));
+  loadProducts().catch(e => console.error('loadProducts error:', e));
+  loadCustomers().catch(e => console.error('loadCustomers error:', e));
+  loadPromos().catch(e => console.error('loadPromos error:', e));
+  loadReviews().catch(e => console.error('loadReviews error:', e));
 });
 
 // ===== NAV =====
@@ -391,3 +396,206 @@ function showToast(msg) {
   t.textContent = msg; t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 3000);
 }
+
+// ===== PROMO CODES =====
+let allPromos = [];
+let editingPromoId = null;
+
+async function loadPromos() {
+  const c = document.getElementById('promosList');
+  if (!c) return;
+  try {
+    const snap = await getDocs(collection(db, 'promoCodes'));
+    allPromos = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0));
+    renderPromosList();
+  } catch(e) {
+    console.error('loadPromos error:', e);
+    c.innerHTML = `<div class="admin-empty"><div class="em-icon">⚠️</div>
+      <p>Ошибка загрузки промокодов: <strong>${e.message}</strong></p>
+      <p style="font-size:.8rem;margin-top:8px;color:var(--gray)">Проверьте правила безопасности Firestore — добавьте коллекцию <code>promoCodes</code></p>
+    </div>`;
+  }
+}
+
+function renderPromosList() {
+  const c = document.getElementById('promosList');
+  if (!allPromos.length) { c.innerHTML = `<div class="admin-empty"><div class="em-icon">🎟</div><p>Промокодов нет. Создайте первый!</p></div>`; return; }
+  c.innerHTML = allPromos.map(p => {
+    const typeLabel = p.type === 'percent' ? `${p.value}%` : `${p.value} ₽`;
+    const expires = p.expiresAt?.toDate ? p.expiresAt.toDate().toLocaleDateString('ru') : 'Бессрочно';
+    const uses = p.maxUses ? `${p.usedCount || 0}/${p.maxUses}` : `${p.usedCount || 0}/∞`;
+    const isExpired = p.expiresAt?.toDate && p.expiresAt.toDate() < new Date();
+    return `
+      <div class="admin-product-row ${!p.active || isExpired ? 'inactive' : ''}">
+        <div class="apc-img" style="background:var(--pink-pale);font-size:1.5rem">🎟</div>
+        <div class="apc-info">
+          <div class="apc-name" style="font-family:monospace;font-size:1.05rem;letter-spacing:.05em">${p.code}</div>
+          <div class="apc-cat">Скидка: <strong>${typeLabel}</strong></div>
+          <div class="apc-desc">Использований: ${uses} · До: ${expires}${isExpired?' · <span style="color:#c62828">Просрочен</span>':''}</div>
+        </div>
+        <div class="apc-price" style="font-size:.85rem;text-align:right;color:${p.active&&!isExpired?'var(--pink)':'var(--gray)'}">
+          ${p.active && !isExpired ? '✅ Активен' : '🚫 Неактивен'}
+        </div>
+        <div class="apc-actions">
+          <button class="apc-btn" onclick="editPromo('${p.id}')" title="Редактировать">✏️</button>
+          <button class="apc-btn" onclick="togglePromoActive('${p.id}')" title="${p.active ? 'Деактивировать' : 'Активировать'}">${p.active ? '🚫' : '✅'}</button>
+          <button class="apc-btn del" onclick="deletePromo('${p.id}')" title="Удалить">🗑</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+document.getElementById('addPromoBtn').onclick = () => openPromoForm();
+document.getElementById('cancelPromoBtn').onclick = () => {
+  document.getElementById('promoForm').style.display = 'none';
+  editingPromoId = null;
+};
+
+window.openPromoForm = openPromoForm;
+
+function openPromoForm(promo = null) {
+  editingPromoId = promo?.id || null;
+  document.getElementById('promoFormTitle').textContent = promo ? 'Редактировать промокод' : 'Новый промокод';
+  document.getElementById('promo_code').value = promo?.code || '';
+  document.getElementById('promo_type').value = promo?.type || 'percent';
+  document.getElementById('promo_value').value = promo?.value || '';
+  document.getElementById('promo_maxUses').value = promo?.maxUses || 0;
+  document.getElementById('promo_expires').value = promo?.expiresAt?.toDate ? promo.expiresAt.toDate().toISOString().split('T')[0] : '';
+  document.getElementById('promoForm').style.display = 'flex';
+  document.getElementById('promoForm').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+window.editPromo = function(id) { openPromoForm(allPromos.find(p => p.id === id)); };
+
+document.getElementById('savePromoBtn').onclick = async () => {
+  const code = document.getElementById('promo_code').value.trim().toUpperCase();
+  const value = parseFloat(document.getElementById('promo_value').value);
+  if (!code || !value) { showToast('Заполните код и размер скидки'); return; }
+  const maxUses = parseInt(document.getElementById('promo_maxUses').value) || 0;
+  const expiresStr = document.getElementById('promo_expires').value;
+  const data = {
+    code,
+    type: document.getElementById('promo_type').value,
+    value,
+    maxUses: maxUses || 0,
+    usedCount: editingPromoId ? (allPromos.find(p=>p.id===editingPromoId)?.usedCount || 0) : 0,
+    active: true,
+    expiresAt: expiresStr ? new Date(expiresStr) : null,
+    updatedAt: serverTimestamp()
+  };
+  try {
+    if (editingPromoId) {
+      await updateDoc(doc(db, 'promoCodes', editingPromoId), data);
+      const idx = allPromos.findIndex(p => p.id === editingPromoId);
+      if (idx >= 0) allPromos[idx] = { ...allPromos[idx], ...data };
+      showToast('Промокод обновлён ✓');
+    } else {
+      data.createdAt = serverTimestamp();
+      const ref = await addDoc(collection(db, 'promoCodes'), data);
+      allPromos.unshift({ id: ref.id, ...data });
+      showToast('Промокод создан 🎟');
+    }
+    renderPromosList();
+    document.getElementById('promoForm').style.display = 'none';
+    editingPromoId = null;
+  } catch(e) { showToast('Ошибка: ' + e.message); }
+};
+
+window.togglePromoActive = async function(id) {
+  const p = allPromos.find(x => x.id === id); if (!p) return;
+  try {
+    await updateDoc(doc(db, 'promoCodes', id), { active: !p.active });
+    p.active = !p.active;
+    renderPromosList();
+    showToast(p.active ? 'Промокод активирован ✅' : 'Промокод деактивирован 🚫');
+  } catch(e) { showToast('Ошибка: ' + e.message); }
+};
+
+window.deletePromo = async function(id) {
+  if (!confirm('Удалить промокод?')) return;
+  try {
+    await deleteDoc(doc(db, 'promoCodes', id));
+    allPromos = allPromos.filter(p => p.id !== id);
+    renderPromosList();
+    showToast('Промокод удалён');
+  } catch(e) { showToast('Ошибка: ' + e.message); }
+};
+
+// ===== REVIEWS MODERATION =====
+let allReviews = [];
+let reviewFilter = 'pending';
+
+async function loadReviews() {
+  const c = document.getElementById('reviewsList');
+  if (!c) return;
+  try {
+    const snap = await getDocs(collection(db, 'reviews'));
+    allReviews = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0));
+    const pending = allReviews.filter(r => !r.approved).length;
+    const badge = document.getElementById('reviewsBadge');
+    if (badge) { badge.style.display = pending ? 'inline' : 'none'; badge.textContent = pending; }
+    renderReviewsList();
+  } catch(e) {
+    console.error('loadReviews error:', e);
+    c.innerHTML = `<div class="admin-empty"><div class="em-icon">⚠️</div><p>Ошибка загрузки отзывов: ${e.message}</p></div>`;
+  }
+}
+
+document.getElementById('reviewFilters').addEventListener('click', (e) => {
+  const btn = e.target.closest('.filter-btn'); if (!btn) return;
+  document.querySelectorAll('#reviewFilters .filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  reviewFilter = btn.dataset.status;
+  renderReviewsList();
+});
+
+function renderReviewsList() {
+  let reviews = allReviews;
+  if (reviewFilter === 'pending') reviews = reviews.filter(r => !r.approved);
+  else if (reviewFilter === 'approved') reviews = reviews.filter(r => r.approved);
+  const c = document.getElementById('reviewsList');
+  if (!reviews.length) { c.innerHTML = `<div class="admin-empty"><div class="em-icon">⭐</div><p>Отзывов нет</p></div>`; return; }
+  c.innerHTML = reviews.map(r => {
+    const date = r.createdAt?.toDate ? r.createdAt.toDate().toLocaleString('ru') : '—';
+    const stars = [1,2,3,4,5].map(i => `<span style="color:${i<=r.rating?'#f59e0b':'#ddd'};font-size:1.1rem">★</span>`).join('');
+    const target = r.productId ? `Товар: <em>${r.productId}</em>` : '🏪 Магазин в целом';
+    return `
+      <div class="admin-order-card" style="opacity:${r.approved?'.75':'1'}">
+        <div class="aoc-head">
+          <div><strong>${r.userName || 'Аноним'}</strong> <span style="font-size:.8rem;color:var(--gray);margin-left:8px">${date}</span></div>
+          <div style="display:flex;gap:8px;align-items:center">${stars} <span style="font-size:.78rem;color:var(--gray)">${target}</span></div>
+        </div>
+        <p style="font-size:.9rem;color:var(--dark);margin:8px 0">${r.text || '<em style="color:var(--gray)">Без текста</em>'}</p>
+        <div style="display:flex;gap:10px;padding-top:12px;border-top:1px solid var(--pink-light);flex-wrap:wrap">
+          ${!r.approved ? `<button class="btn-primary small" onclick="approveReview('${r.id}')">✅ Одобрить</button>` : `<span style="color:#2e7d32;font-size:.82rem">✅ Опубликован</span>`}
+          <button class="btn-ghost small" onclick="deleteReview('${r.id}')">🗑 Удалить</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+window.approveReview = async function(id) {
+  try {
+    await updateDoc(doc(db, 'reviews', id), { approved: true });
+    const r = allReviews.find(x => x.id === id);
+    if (r) r.approved = true;
+    const pending = allReviews.filter(r => !r.approved).length;
+    const badge = document.getElementById('reviewsBadge');
+    badge.style.display = pending ? 'inline' : 'none';
+    badge.textContent = pending;
+    renderReviewsList();
+    showToast('Отзыв опубликован ✅');
+  } catch(e) { showToast('Ошибка: ' + e.message); }
+};
+
+window.deleteReview = async function(id) {
+  if (!confirm('Удалить отзыв?')) return;
+  try {
+    await deleteDoc(doc(db, 'reviews', id));
+    allReviews = allReviews.filter(r => r.id !== id);
+    renderReviewsList();
+    showToast('Отзыв удалён');
+  } catch(e) { showToast('Ошибка: ' + e.message); }
+};
