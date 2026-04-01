@@ -3,10 +3,24 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import {
   getFirestore, collection, getDocs, doc, updateDoc, deleteDoc,
-  addDoc, setDoc, query, orderBy, serverTimestamp
+  addDoc, setDoc, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
- 
+// ===== CLOUDINARY =====
+const CLOUDINARY_CLOUD = 'diu2fuoda';
+const CLOUDINARY_PRESET = 'eva_unsigned';
+async function uploadToCloudinary(file) {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('upload_preset', CLOUDINARY_PRESET);
+  formData.append('folder', 'eva');
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`, {
+    method: 'POST', body: formData
+  });
+  if (!res.ok) throw new Error('Ошибка загрузки в Cloudinary: ' + res.status);
+  const json = await res.json();
+  return json.secure_url;
+}
+
 const firebaseConfig = {
   apiKey: "AIzaSyBv9quQOKOsiNp1S8J3b15hVSsXPd7OlK0",
   authDomain: "evaflower-ae2d6.firebaseapp.com",
@@ -15,13 +29,12 @@ const firebaseConfig = {
   messagingSenderId: "1074251486860",
   appId: "1:1074251486860:web:a43e11b06025b28d1f4da9"
 };
- 
+
 const ADMIN_EMAIL = "eva@eva.com";
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const storage = getStorage(app);
- 
+
 const CAT_NAMES = { flowers:'🌸 Цветы', balloons:'🎈 Шары', toys:'🧸 Игрушки' };
 const STATUS_MAP = {
   pending:  { label:'Принят',        cls:'badge-pending',  emoji:'🕐' },
@@ -29,12 +42,12 @@ const STATUS_MAP = {
   delivery: { label:'Курьер в пути', cls:'badge-delivery', emoji:'🚚' },
   done:     { label:'Доставлен',     cls:'badge-done',     emoji:'✅' }
 };
- 
+
 let allOrders = [];
 let allProducts = [];
 let activeFilter = 'all';
 let editingProductId = null;
- 
+
 // ===== AUTH =====
 onAuthStateChanged(auth, async (user) => {
   if (!user) { window.location.href = 'index.html'; return; }
@@ -47,7 +60,7 @@ onAuthStateChanged(auth, async (user) => {
   await Promise.all([loadOrders(), loadProducts()]);
   await loadCustomers();
 });
- 
+
 // ===== NAV =====
 document.querySelectorAll('.admin-nav-btn').forEach(btn => {
   btn.onclick = () => {
@@ -57,7 +70,7 @@ document.querySelectorAll('.admin-nav-btn').forEach(btn => {
     document.getElementById('page-' + btn.dataset.page).classList.add('active');
   };
 });
- 
+
 document.getElementById('orderFilters').addEventListener('click', (e) => {
   const btn = e.target.closest('.filter-btn'); if (!btn) return;
   document.querySelectorAll('#orderFilters .filter-btn').forEach(b => b.classList.remove('active'));
@@ -65,14 +78,16 @@ document.getElementById('orderFilters').addEventListener('click', (e) => {
   activeFilter = btn.dataset.status;
   renderOrdersList();
 });
- 
+
 document.getElementById('logoutBtn').onclick = async () => { await signOut(auth); window.location.href = 'index.html'; };
- 
+
 // ===== ORDERS =====
 async function loadOrders() {
   try {
-    const snap = await getDocs(query(collection(db, 'orders'), orderBy('createdAt', 'desc')));
-    allOrders = snap.docs.map(d => ({ _id: d.id, ...d.data() }));
+    const snap = await getDocs(collection(db, 'orders'));
+    allOrders = snap.docs
+      .map(d => ({ _id: d.id, ...d.data() }))
+      .sort((a, b) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0));
     updateStats();
     renderDashNewOrders();
     renderOrdersList();
@@ -81,7 +96,7 @@ async function loadOrders() {
     document.getElementById('dashNewOrders').innerHTML = `<div class="admin-empty"><div class="em-icon">⚠️</div><p>Нет доступа к заказам</p></div>`;
   }
 }
- 
+
 function updateStats() {
   const pending = allOrders.filter(o => o.status === 'pending').length;
   const revenue = allOrders.filter(o => o.status === 'done').reduce((s, o) => s + (o.total || 0), 0);
@@ -91,16 +106,16 @@ function updateStats() {
   document.getElementById('stat-revenue').textContent = revenue.toLocaleString() + ' ₽';
   document.getElementById('pendingBadge').textContent = pending;
 }
- 
+
 function renderDashNewOrders() {
   const newOrders = allOrders.filter(o => o.status === 'pending');
   const c = document.getElementById('dashNewOrders');
   if (!newOrders.length) { c.innerHTML = `<div class="admin-empty"><div class="em-icon">🎉</div><p>Новых заказов нет</p></div>`; return; }
   c.innerHTML = newOrders.map(o => orderCardHTML(o)).join('');
 }
- 
+
 window.filterOrders = function() { renderOrdersList(); };
- 
+
 function renderOrdersList() {
   const search = (document.getElementById('orderSearch')?.value || '').toLowerCase();
   let orders = allOrders;
@@ -114,7 +129,7 @@ function renderOrdersList() {
   if (!orders.length) { c.innerHTML = `<div class="admin-empty"><div class="em-icon">📦</div><p>Заказов не найдено</p></div>`; return; }
   c.innerHTML = orders.map(o => orderCardHTML(o)).join('');
 }
- 
+
 function orderCardHTML(o) {
   const st = STATUS_MAP[o.status] || STATUS_MAP.pending;
   const date = o.createdAt?.toDate ? o.createdAt.toDate().toLocaleString('ru') : '—';
@@ -156,7 +171,7 @@ function orderCardHTML(o) {
     </div>
   `;
 }
- 
+
 window.changeStatus = async function(select) {
   const id = select.dataset.id;
   try {
@@ -173,14 +188,12 @@ window.changeStatus = async function(select) {
     badge.textContent = `${st.emoji} ${st.label}`;
   } catch(e) { showToast('Ошибка: ' + e.message); }
 };
- 
+
 window.uploadOrderPhoto = async function(input, orderId) {
   const file = input.files[0]; if (!file) return;
   showToast('Загружаем фото…');
   try {
-    const storageRef = ref(storage, `orders/${orderId}_${Date.now()}`);
-    await uploadBytes(storageRef, file);
-    const url = await getDownloadURL(storageRef);
+    const url = await uploadToCloudinary(file);
     await updateDoc(doc(db, 'orders', orderId), { assemblyPhoto: url });
     const order = allOrders.find(o => o._id === orderId);
     if (order) order.assemblyPhoto = url;
@@ -189,7 +202,7 @@ window.uploadOrderPhoto = async function(input, orderId) {
     renderDashNewOrders();
   } catch(e) { showToast('Ошибка загрузки: ' + e.message); }
 };
- 
+
 window.removeOrderPhoto = async function(orderId) {
   try {
     await updateDoc(doc(db, 'orders', orderId), { assemblyPhoto: '' });
@@ -199,18 +212,20 @@ window.removeOrderPhoto = async function(orderId) {
     renderOrdersList();
   } catch(e) { showToast('Ошибка: ' + e.message); }
 };
- 
+
 // ===== PRODUCTS =====
 async function loadProducts() {
   try {
-    const snap = await getDocs(query(collection(db, 'products'), orderBy('sortOrder', 'asc')));
-    allProducts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const snap = await getDocs(collection(db, 'products'));
+    allProducts = snap.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => (a.sortOrder ?? 999) - (b.sortOrder ?? 999));
     renderProductsList();
   } catch(e) {
     document.getElementById('productsList').innerHTML = `<div class="admin-empty"><div class="em-icon">⚠️</div><p>Ошибка загрузки товаров</p></div>`;
   }
 }
- 
+
 function renderProductsList() {
   const c = document.getElementById('productsList');
   if (!allProducts.length) { c.innerHTML = `<div class="admin-empty"><div class="em-icon">🌸</div><p>Товаров нет. Нажмите «+ Добавить товар»</p></div>`; return; }
@@ -235,9 +250,9 @@ function renderProductsList() {
     </div>
   `).join('');
 }
- 
+
 document.getElementById('addProductBtn').onclick = () => openProductForm();
- 
+
 function openProductForm(product = null) {
   editingProductId = product ? product.id : null;
   document.getElementById('productFormTitle').textContent = product ? 'Редактировать товар' : 'Новый товар';
@@ -255,24 +270,24 @@ function openProductForm(product = null) {
   form.style.display = 'flex';
   setTimeout(() => form.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
 }
- 
+
 document.getElementById('cancelProductBtn').onclick = () => {
   document.getElementById('productForm').style.display = 'none';
   editingProductId = null;
 };
- 
+
 document.getElementById('pf_image').onchange = (e) => {
   const file = e.target.files[0]; if (!file) return;
   const reader = new FileReader();
   reader.onload = ev => { document.getElementById('pf_imagePreview').innerHTML = `<img src="${ev.target.result}" alt="preview"/>`; };
   reader.readAsDataURL(file);
 };
- 
+
 document.getElementById('saveProductBtn').onclick = async () => {
   const name  = document.getElementById('pf_name').value.trim();
   const price = parseInt(document.getElementById('pf_price').value);
   if (!name || !price) { showToast('Заполните название и цену'); return; }
- 
+
   const data = {
     name,
     desc:  document.getElementById('pf_desc').value.trim(),
@@ -282,22 +297,20 @@ document.getElementById('saveProductBtn').onclick = async () => {
     cat:   document.getElementById('pf_cat').value,
     active: true
   };
- 
+
   const btn = document.getElementById('saveProductBtn');
   btn.textContent = 'Сохраняем…';
   btn.disabled = true;
- 
+
   try {
     const fileInput = document.getElementById('pf_image');
     const existingUrl = document.getElementById('pf_imagePreview').dataset.existingUrl;
     if (fileInput.files[0]) {
-      const fileRef = ref(storage, `products/${Date.now()}_${fileInput.files[0].name}`);
-      await uploadBytes(fileRef, fileInput.files[0]);
-      data.imageURL = await getDownloadURL(fileRef);
+      data.imageURL = await uploadToCloudinary(fileInput.files[0]);
     } else if (existingUrl) {
       data.imageURL = existingUrl;
     }
- 
+
     if (editingProductId) {
       await updateDoc(doc(db, 'products', editingProductId), data);
       const idx = allProducts.findIndex(p => p.id === editingProductId);
@@ -309,7 +322,7 @@ document.getElementById('saveProductBtn').onclick = async () => {
       allProducts.push({ id: newRef.id, ...data });
       showToast('Товар добавлен 🌸');
     }
- 
+
     renderProductsList();
     document.getElementById('productForm').style.display = 'none';
     editingProductId = null;
@@ -321,12 +334,12 @@ document.getElementById('saveProductBtn').onclick = async () => {
     btn.disabled = false;
   }
 };
- 
+
 window.startEditProduct = function(id) {
   const p = allProducts.find(x => x.id === id);
   if (p) openProductForm(p);
 };
- 
+
 window.toggleProductActive = async function(id) {
   const p = allProducts.find(x => x.id === id); if (!p) return;
   const newActive = p.active === false ? true : false;
@@ -337,7 +350,7 @@ window.toggleProductActive = async function(id) {
     showToast(newActive ? 'Товар показан 👁' : 'Товар скрыт 🚫');
   } catch(e) { showToast('Ошибка: ' + e.message); }
 };
- 
+
 window.deleteProduct = async function(id) {
   if (!confirm('Удалить товар? Это нельзя отменить.')) return;
   try {
@@ -347,7 +360,7 @@ window.deleteProduct = async function(id) {
     showToast('Товар удалён');
   } catch(e) { showToast('Ошибка: ' + e.message); }
 };
- 
+
 // ===== CUSTOMERS =====
 async function loadCustomers() {
   try {
@@ -372,10 +385,9 @@ async function loadCustomers() {
       </table></div>`;
   } catch(e) { document.getElementById('customersList').innerHTML = `<div class="admin-empty"><div class="em-icon">⚠️</div><p>Ошибка загрузки</p></div>`; }
 }
- 
+
 function showToast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg; t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 3000);
 }
- 
