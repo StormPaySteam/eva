@@ -3,7 +3,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import {
   getFirestore, doc, setDoc, getDoc, updateDoc,
-  collection, addDoc, getDocs, deleteDoc, query, where, orderBy,
+  collection, addDoc, getDocs, deleteDoc, query, where,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
@@ -25,7 +25,7 @@ const storage = getStorage(app);
 let PRODUCTS = [];
 async function loadProducts() {
   try {
-    const snap = await getDocs(query(collection(db, 'products'), orderBy('sortOrder', 'asc')));
+    const snap = await getDocs(collection(db, 'products'));
     PRODUCTS = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(p => p.active !== false);
   } catch(e) {
     PRODUCTS = [];
@@ -111,7 +111,7 @@ document.getElementById('avatarInput').onchange = async (e) => {
 // ===== ORDERS =====
 async function loadOrders(uid) {
   try {
-    const q = query(collection(db, 'orders'), where('userId', '==', uid), orderBy('createdAt', 'desc'));
+    const q = query(collection(db, 'orders'), where('userId', '==', uid));
     const snap = await getDocs(q);
     const container = document.getElementById('ordersContainer');
     if (snap.empty) { container.innerHTML = '<div class="empty-state">📦 Заказов пока нет</div>'; return; }
