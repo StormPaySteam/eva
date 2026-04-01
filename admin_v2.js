@@ -57,10 +57,13 @@ onAuthStateChanged(auth, async (user) => {
     return;
   }
   document.getElementById('adminEmail').textContent = user.email;
-  await Promise.all([loadOrders(), loadProducts()]);
-  await loadCustomers();
-  await loadPromos();
-  await loadReviews();
+
+  // Run all loaders in parallel — don't chain so one failure can't block others
+  loadOrders().catch(e => console.error('loadOrders error:', e));
+  loadProducts().catch(e => console.error('loadProducts error:', e));
+  loadCustomers().catch(e => console.error('loadCustomers error:', e));
+  loadPromos().catch(e => console.error('loadPromos error:', e));
+  loadReviews().catch(e => console.error('loadReviews error:', e));
 });
 
 // ===== NAV =====
@@ -399,13 +402,19 @@ let allPromos = [];
 let editingPromoId = null;
 
 async function loadPromos() {
+  const c = document.getElementById('promosList');
+  if (!c) return;
   try {
     const snap = await getDocs(collection(db, 'promoCodes'));
     allPromos = snap.docs.map(d => ({ id: d.id, ...d.data() }))
       .sort((a, b) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0));
     renderPromosList();
   } catch(e) {
-    document.getElementById('promosList').innerHTML = `<div class="admin-empty"><div class="em-icon">⚠️</div><p>Ошибка загрузки: ${e.message}</p></div>`;
+    console.error('loadPromos error:', e);
+    c.innerHTML = `<div class="admin-empty"><div class="em-icon">⚠️</div>
+      <p>Ошибка загрузки промокодов: <strong>${e.message}</strong></p>
+      <p style="font-size:.8rem;margin-top:8px;color:var(--gray)">Проверьте правила безопасности Firestore — добавьте коллекцию <code>promoCodes</code></p>
+    </div>`;
   }
 }
 
@@ -442,6 +451,8 @@ document.getElementById('cancelPromoBtn').onclick = () => {
   document.getElementById('promoForm').style.display = 'none';
   editingPromoId = null;
 };
+
+window.openPromoForm = openPromoForm;
 
 function openPromoForm(promo = null) {
   editingPromoId = promo?.id || null;
@@ -516,16 +527,19 @@ let allReviews = [];
 let reviewFilter = 'pending';
 
 async function loadReviews() {
+  const c = document.getElementById('reviewsList');
+  if (!c) return;
   try {
-    const snap = await getDocs(query(collection(db, 'reviews'), orderBy('createdAt', 'desc')));
-    allReviews = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const snap = await getDocs(collection(db, 'reviews'));
+    allReviews = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0));
     const pending = allReviews.filter(r => !r.approved).length;
     const badge = document.getElementById('reviewsBadge');
-    badge.style.display = pending ? 'inline' : 'none';
-    badge.textContent = pending;
+    if (badge) { badge.style.display = pending ? 'inline' : 'none'; badge.textContent = pending; }
     renderReviewsList();
   } catch(e) {
-    document.getElementById('reviewsList').innerHTML = `<div class="admin-empty"><div class="em-icon">⚠️</div><p>Ошибка: ${e.message}</p></div>`;
+    console.error('loadReviews error:', e);
+    c.innerHTML = `<div class="admin-empty"><div class="em-icon">⚠️</div><p>Ошибка загрузки отзывов: ${e.message}</p></div>`;
   }
 }
 
