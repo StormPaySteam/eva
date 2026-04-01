@@ -521,7 +521,7 @@ footer {
   width:96px; height:96px; border-radius:50%; overflow:hidden;
   margin:0 auto; border:3px solid var(--pink);
 }
-.avatar-ring img { width:100%; height:100%; object-fit:cover; }
+.avatar-ring img { width:100%; height:100%; object-fit:cover; object-position:center; display:block; }
 .avatar-change-btn {
   position:absolute; bottom:0; right:50%; transform:translateX(50%) translateX(36px);
   width:30px; height:30px; border-radius:50%;
