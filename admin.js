@@ -3,7 +3,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import {
   getFirestore, collection, getDocs, doc, updateDoc, deleteDoc,
-  addDoc, setDoc, query, orderBy, serverTimestamp
+  addDoc, setDoc, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
 
@@ -71,8 +71,10 @@ document.getElementById('logoutBtn').onclick = async () => { await signOut(auth)
 // ===== ORDERS =====
 async function loadOrders() {
   try {
-    const snap = await getDocs(query(collection(db, 'orders'), orderBy('createdAt', 'desc')));
-    allOrders = snap.docs.map(d => ({ _id: d.id, ...d.data() }));
+    const snap = await getDocs(collection(db, 'orders'));
+    allOrders = snap.docs
+      .map(d => ({ _id: d.id, ...d.data() }))
+      .sort((a, b) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0));
     updateStats();
     renderDashNewOrders();
     renderOrdersList();
@@ -203,11 +205,14 @@ window.removeOrderPhoto = async function(orderId) {
 // ===== PRODUCTS =====
 async function loadProducts() {
   try {
-    const snap = await getDocs(query(collection(db, 'products'), orderBy('sortOrder', 'asc')));
-    allProducts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const snap = await getDocs(collection(db, 'products'));
+    allProducts = snap.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => (a.sortOrder ?? 999) - (b.sortOrder ?? 999));
     renderProductsList();
   } catch(e) {
     document.getElementById('productsList').innerHTML = `<div class="admin-empty"><div class="em-icon">⚠️</div><p>Ошибка загрузки товаров</p></div>`;
+    console.error(e);
   }
 }
 
