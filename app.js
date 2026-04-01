@@ -1,7 +1,7 @@
 // ===== EVA FLOWERS — MAIN APP =====
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, doc, setDoc, getDoc, addDoc, collection, getDocs, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, doc, setDoc, getDoc, addDoc, collection, getDocs, serverTimestamp, query, orderBy, where, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBv9quQOKOsiNp1S8J3b15hVSsXPd7OlK0",
@@ -105,7 +105,7 @@ function renderCatalog(filter = 'all') {
   }
 }
 
-window.openProduct = function(id) {
+window.openProduct = async function(id) {
   const p = PRODUCTS.find(x => x.id === id);
   if (!p) return;
   currentProduct = p; modalQty = 1;
@@ -124,6 +124,14 @@ window.openProduct = function(id) {
       <button class="btn-ghost full" style="margin-top:10px" onclick="toggleFav(null,'${p.id}')">
         ${favorites.includes(p.id)?'❤️ Убрать из избранного':'🤍 В избранное'}
       </button>
+      <div class="product-reviews-section">
+        <div class="product-reviews-header">
+          <h4>Отзывы</h4>
+          <span class="reviews-loading-hint" id="reviewsHint-${p.id}">Загрузка…</span>
+        </div>
+        <div id="productReviewsList-${p.id}"></div>
+        <div id="productReviewFormWrap-${p.id}"></div>
+      </div>
     </div>
   `;
   document.getElementById('qtyMinus').onclick = () => { if(modalQty>1){modalQty--;updateModalQty(p);} };
@@ -134,6 +142,17 @@ window.openProduct = function(id) {
     showToast(`${p.name} добавлен${modalQty>1?' ('+modalQty+' шт.)':''} в корзину 🌸`);
   };
   openModal('productModal');
+  // Load reviews async
+  const reviews = await loadProductReviews(p.id);
+  const hint = document.getElementById(`reviewsHint-${p.id}`);
+  if (hint) hint.remove();
+  const reviewsList = document.getElementById(`productReviewsList-${p.id}`);
+  if (reviewsList) {
+    const avg = reviews.length ? (reviews.reduce((s,r)=>s+r.rating,0)/reviews.length).toFixed(1) : null;
+    reviewsList.innerHTML = (avg ? `<div class="reviews-avg">${avg} ★ <span>(${reviews.length})</span></div>` : '') + reviewsListHTML(reviews);
+  }
+  const formWrap = document.getElementById(`productReviewFormWrap-${p.id}`);
+  if (formWrap) formWrap.innerHTML = reviewFormHTML(p.id);
 };
 
 function updateModalQty(p) {
@@ -336,6 +355,167 @@ document.querySelectorAll('.cat-chip').forEach(btn => {
 });
 document.getElementById('authBtn').onclick = () => openModal('authModal');
 
+// ===== PROMO CODES =====
+let activePromo = null;
+
+async function validatePromoCode(code) {
+  if (!code) return null;
+  try {
+    const q = query(collection(db, 'promoCodes'),
+      where('code', '==', code.toUpperCase()),
+      where('active', '==', true));
+    const snap = await getDocs(q);
+    if (snap.empty) return null;
+    const d = snap.docs[0].data();
+    if (d.expiresAt && d.expiresAt.toDate && d.expiresAt.toDate() < new Date()) return null;
+    if (d.maxUses && d.usedCount >= d.maxUses) return null;
+    return { id: snap.docs[0].id, ...d };
+  } catch(e) { return null; }
+}
+
+async function applyPromoUI(inputId, statusId) {
+  const code = document.getElementById(inputId)?.value?.trim();
+  if (!code) return;
+  const promo = await validatePromoCode(code);
+  const statusEl = document.getElementById(statusId);
+  if (promo) {
+    activePromo = promo;
+    const label = promo.type === 'percent' ? `-${promo.value}%` : `-${promo.value.toLocaleString()} ₽`;
+    statusEl.textContent = `✅ Промокод применён: ${label}`;
+    statusEl.style.color = '#2e7d32';
+    showToast(`Промокод ${promo.code} применён: скидка ${label} 🎉`);
+    if (inputId === 'co_promo') updateCheckoutTotal();
+  } else {
+    activePromo = null;
+    statusEl.textContent = '❌ Промокод недействителен';
+    statusEl.style.color = '#c62828';
+  }
+}
+
+function updateCheckoutTotal() {
+  const rawTotal = cart.reduce((s, item) => {
+    const p = PRODUCTS.find(x => x.id === item.id);
+    return s + (p ? p.price * item.qty : 0);
+  }, 0);
+  let discounted = rawTotal;
+  if (activePromo) {
+    if (activePromo.type === 'percent') discounted = Math.round(rawTotal * (1 - activePromo.value / 100));
+    else discounted = Math.max(0, rawTotal - activePromo.value);
+  }
+  const el = document.getElementById('checkoutTotalDisplay');
+  if (el) el.textContent = discounted.toLocaleString() + ' ₽';
+}
+
+document.getElementById('promoApplyBtn').onclick = () => applyPromoUI('promoInput', 'promoStatus');
+document.getElementById('coPromoApplyBtn').onclick = () => applyPromoUI('co_promo', 'coPromoStatus');
+
+// ===== REVIEWS =====
+async function loadProductReviews(productId) {
+  try {
+    const q = query(collection(db, 'reviews'),
+      where('productId', '==', productId),
+      where('approved', '==', true),
+      orderBy('createdAt', 'desc'));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch(e) { return []; }
+}
+
+async function loadStoreReviews() {
+  try {
+    const q = query(collection(db, 'reviews'),
+      where('productId', '==', null),
+      where('approved', '==', true),
+      orderBy('createdAt', 'desc'));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch(e) { return []; }
+}
+
+function starsHTML(rating, interactive = false, prefix = '') {
+  return [1,2,3,4,5].map(i => `
+    <span class="star ${interactive ? 'star-interactive' : ''} ${!interactive && i <= rating ? 'star-filled' : ''}"
+      data-val="${i}" data-prefix="${prefix}">${i <= rating ? '★' : '☆'}</span>
+  `).join('');
+}
+
+function reviewsListHTML(reviews) {
+  if (!reviews.length) return '<div class="reviews-empty">Пока нет отзывов. Будьте первым! 🌸</div>';
+  return reviews.map(r => {
+    const date = r.createdAt?.toDate ? r.createdAt.toDate().toLocaleDateString('ru') : '';
+    return `<div class="review-item">
+      <div class="review-header">
+        <span class="review-author">${r.userName || 'Аноним'}</span>
+        <span class="review-stars">${[1,2,3,4,5].map(i => `<span class="star ${i <= r.rating ? 'star-filled' : ''}">★</span>`).join('')}</span>
+        <span class="review-date">${date}</span>
+      </div>
+      <p class="review-text">${r.text || ''}</p>
+    </div>`;
+  }).join('');
+}
+
+function reviewFormHTML(productId) {
+  const pid = productId || 'store';
+  return `
+    <div class="review-form" id="reviewForm-${pid}">
+      <h4>Оставить отзыв</h4>
+      <div class="review-stars-pick" id="starPick-${pid}">
+        ${[1,2,3,4,5].map(i => `<span class="star star-pick" data-val="${i}" data-pid="${pid}">☆</span>`).join('')}
+      </div>
+      <textarea id="reviewText-${pid}" placeholder="Ваш отзыв…" rows="3" class="review-textarea"></textarea>
+      <button class="btn-primary small" onclick="submitReview('${productId}', '${pid}')">Отправить отзыв</button>
+    </div>`;
+}
+
+window.submitReview = async function(productId, pid) {
+  if (!currentUser) { showToast('Войдите, чтобы оставить отзыв'); openModal('authModal'); return; }
+  const rating = parseInt(document.getElementById(`starPick-${pid}`)?.dataset.selected || 0);
+  const text = document.getElementById(`reviewText-${pid}`)?.value?.trim();
+  if (!rating) { showToast('Поставьте оценку ★'); return; }
+  try {
+    await addDoc(collection(db, 'reviews'), {
+      productId: productId || null,
+      userId: currentUser.uid,
+      userName: currentUser.displayName || currentUser.email?.split('@')[0] || 'Пользователь',
+      userPhoto: currentUser.photoURL || null,
+      rating,
+      text: text || '',
+      approved: false,
+      createdAt: serverTimestamp()
+    });
+    showToast('Отзыв отправлен на модерацию 🌸');
+    const form = document.getElementById(`reviewForm-${pid}`);
+    if (form) form.innerHTML = '<p style="color:var(--pink);text-align:center;padding:12px 0">✅ Спасибо! Отзыв появится после проверки.</p>';
+  } catch(e) { showToast('Ошибка: ' + e.message); }
+};
+
+// Star picker interaction (delegated)
+document.addEventListener('click', (e) => {
+  const star = e.target.closest('.star-pick');
+  if (!star) return;
+  const pid = star.dataset.pid;
+  const val = parseInt(star.dataset.val);
+  const picker = document.getElementById(`starPick-${pid}`);
+  if (!picker) return;
+  picker.dataset.selected = val;
+  picker.querySelectorAll('.star-pick').forEach((s, i) => {
+    s.textContent = i < val ? '★' : '☆';
+    s.classList.toggle('star-filled', i < val);
+  });
+});
+
+async function renderStoreReviews() {
+  const container = document.getElementById('storeReviewsList');
+  if (!container) return;
+  const reviews = await loadStoreReviews();
+  const avg = reviews.length ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1) : null;
+  document.getElementById('storeRatingBig').textContent = avg ? `${avg} ★` : '—';
+  document.getElementById('storeReviewCount').textContent = reviews.length ? `${reviews.length} отзыв${reviews.length === 1 ? '' : reviews.length < 5 ? 'а' : 'ов'}` : '';
+  container.innerHTML = reviewsListHTML(reviews);
+  const formWrap = document.getElementById('storeReviewFormWrap');
+  if (formWrap) formWrap.innerHTML = reviewFormHTML(null);
+}
+
 window.showToast = function(msg) {
   const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'),3000);
@@ -343,3 +523,4 @@ window.showToast = function(msg) {
 
 initLogoAnimation();
 loadProducts();
+renderStoreReviews();

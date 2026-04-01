@@ -134,6 +134,8 @@
     </button>
     <button class="admin-nav-btn" data-page="products">🌸 Товары</button>
     <button class="admin-nav-btn" data-page="customers">👥 Клиенты</button>
+    <button class="admin-nav-btn" data-page="promos">🎟 Промокоды</button>
+    <button class="admin-nav-btn" data-page="reviews">⭐ Отзывы <span class="nav-badge" id="reviewsBadge" style="display:none">!</span></button>
   </aside>
 
   <main class="admin-main">
@@ -233,6 +235,59 @@
     <div class="admin-page" id="page-customers">
       <h2 class="admin-page-title">Клиенты</h2>
       <div id="customersList"><div class="admin-loading">Загрузка…</div></div>
+    </div>
+
+    <!-- PROMOS -->
+    <div class="admin-page" id="page-promos">
+      <h2 class="admin-page-title">Промокоды</h2>
+      <div class="products-toolbar">
+        <button class="btn-primary small" id="addPromoBtn">+ Создать промокод</button>
+      </div>
+      <!-- Promo Form -->
+      <div class="product-form-wrap" id="promoForm" style="display:none">
+        <h4 id="promoFormTitle">Новый промокод</h4>
+        <div class="pf-grid">
+          <div class="pf-field">
+            <label>Код (заглавные буквы/цифры) *</label>
+            <input type="text" id="promo_code" placeholder="SPRING20" style="text-transform:uppercase"/>
+          </div>
+          <div class="pf-field">
+            <label>Тип скидки</label>
+            <select id="promo_type">
+              <option value="percent">% от суммы</option>
+              <option value="fixed">Фиксированная сумма ₽</option>
+            </select>
+          </div>
+          <div class="pf-field">
+            <label>Размер скидки *</label>
+            <input type="number" id="promo_value" placeholder="10" min="1"/>
+          </div>
+          <div class="pf-field">
+            <label>Макс. использований (0 = безлимит)</label>
+            <input type="number" id="promo_maxUses" placeholder="0" min="0"/>
+          </div>
+          <div class="pf-field pf-full">
+            <label>Срок действия до (оставьте пустым = бессрочно)</label>
+            <input type="date" id="promo_expires"/>
+          </div>
+        </div>
+        <div class="pf-form-btns">
+          <button class="btn-primary" id="savePromoBtn">Сохранить</button>
+          <button class="btn-ghost" id="cancelPromoBtn">Отмена</button>
+        </div>
+      </div>
+      <div id="promosList"><div class="admin-loading">Загрузка промокодов…</div></div>
+    </div>
+
+    <!-- REVIEWS -->
+    <div class="admin-page" id="page-reviews">
+      <h2 class="admin-page-title">Отзывы</h2>
+      <div class="admin-filters" id="reviewFilters">
+        <button class="filter-btn active" data-status="pending">⏳ На модерации</button>
+        <button class="filter-btn" data-status="approved">✅ Одобренные</button>
+        <button class="filter-btn" data-status="all">Все</button>
+      </div>
+      <div id="reviewsList"><div class="admin-loading">Загрузка…</div></div>
     </div>
 
   </main>

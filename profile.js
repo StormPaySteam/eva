@@ -54,7 +54,11 @@ async function loadProfile(user) {
   document.getElementById('sidebarName').textContent = name;
   document.getElementById('sidebarNick').textContent = data.nickname ? '@' + data.nickname : '';
 
-  const avatar = data.avatarURL || user.photoURL;
+  let avatar = data.avatarURL || user.photoURL;
+  // Google photos come in small size by default — request 256px version
+  if (avatar && avatar.includes('googleusercontent.com')) {
+    avatar = avatar.replace(/=s\d+(-c)?$/, '') + '=s256-c';
+  }
   if (avatar) document.getElementById('avatarImg').src = avatar;
 
   // Form fields
