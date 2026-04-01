@@ -5,7 +5,21 @@ import {
   getFirestore, collection, getDocs, doc, updateDoc, deleteDoc,
   addDoc, setDoc, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
+// Cloudinary
+const CLOUDINARY_CLOUD = 'diu2fuoda';
+const CLOUDINARY_PRESET = 'eva_unsigned';
+async function uploadToCloudinary(file) {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('upload_preset', CLOUDINARY_PRESET);
+  formData.append('folder', 'eva');
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`, {
+    method: 'POST', body: formData
+  });
+  if (!res.ok) throw new Error('Cloudinary upload failed');
+  const data = await res.json();
+  return data.secure_url;
+}
 
 const firebaseConfig = {
   apiKey: "AIzaSyBv9quQOKOsiNp1S8J3b15hVSsXPd7OlK0",
@@ -20,7 +34,6 @@ const ADMIN_EMAIL = "eva@eva.com";
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const storage = getStorage(app);
 
 const CAT_NAMES = { flowers:'🌸 Цветы', balloons:'🎈 Шары', toys:'🧸 Игрушки' };
 const STATUS_MAP = {
@@ -180,9 +193,7 @@ window.uploadOrderPhoto = async function(input, orderId) {
   const file = input.files[0]; if (!file) return;
   showToast('Загружаем фото…');
   try {
-    const storageRef = ref(storage, `orders/${orderId}_${Date.now()}`);
-    await uploadBytes(storageRef, file);
-    const url = await getDownloadURL(storageRef);
+    const url = await uploadToCloudinary(file);
     await updateDoc(doc(db, 'orders', orderId), { assemblyPhoto: url });
     const order = allOrders.find(o => o._id === orderId);
     if (order) order.assemblyPhoto = url;
@@ -212,7 +223,6 @@ async function loadProducts() {
     renderProductsList();
   } catch(e) {
     document.getElementById('productsList').innerHTML = `<div class="admin-empty"><div class="em-icon">⚠️</div><p>Ошибка загрузки товаров</p></div>`;
-    console.error(e);
   }
 }
 
@@ -296,9 +306,7 @@ document.getElementById('saveProductBtn').onclick = async () => {
     const fileInput = document.getElementById('pf_image');
     const existingUrl = document.getElementById('pf_imagePreview').dataset.existingUrl;
     if (fileInput.files[0]) {
-      const fileRef = ref(storage, `products/${Date.now()}_${fileInput.files[0].name}`);
-      await uploadBytes(fileRef, fileInput.files[0]);
-      data.imageURL = await getDownloadURL(fileRef);
+      data.imageURL = await uploadToCloudinary(fileInput.files[0]);
     } else if (existingUrl) {
       data.imageURL = existingUrl;
     }
