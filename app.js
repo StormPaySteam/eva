@@ -40,8 +40,8 @@ let currentUser = null;
 let favorites = JSON.parse(localStorage.getItem('eva_favs') || '[]');
 let currentProduct = null;
 let modalQty = 1;
-let currentSort = 'default';
-let currentCatFilter = 'all';
+let currentSort = sessionStorage.getItem('eva_sort') || 'default';
+let currentCatFilter = sessionStorage.getItem('eva_filter') || 'all';
 
 async function loadProducts() {
   try {
@@ -88,6 +88,17 @@ function sortProducts(items) {
 
 function renderCatalog(filter = currentCatFilter) {
   currentCatFilter = filter;
+  sessionStorage.setItem('eva_filter', filter);
+  sessionStorage.setItem('eva_sort', currentSort);
+
+  // Always keep sort chip visuals in sync with currentSort
+  document.querySelectorAll('.sort-chip').forEach(b => {
+    b.classList.toggle('active', b.dataset.sort === currentSort);
+  });
+  // Keep cat chip visuals in sync
+  document.querySelectorAll('.cat-chip').forEach(b => {
+    b.classList.toggle('active', b.dataset.cat === filter);
+  });
   const sections = { flowers: 'flowersGrid', balloons: 'balloonsGrid', toys: 'toysGrid' };
   const active = PRODUCTS.filter(p => p.active !== false);
   for (const [cat, gridId] of Object.entries(sections)) {
@@ -392,9 +403,8 @@ document.querySelectorAll('.cat-chip').forEach(btn => {
 // ===== SORT CHIPS =====
 document.querySelectorAll('.sort-chip').forEach(btn => {
   btn.onclick = () => {
-    document.querySelectorAll('.sort-chip').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
     currentSort = btn.dataset.sort;
+    sessionStorage.setItem('eva_sort', currentSort);
     renderCatalog();
   };
 });
@@ -569,5 +579,14 @@ window.showToast = function(msg) {
 };
 
 initLogoAnimation();
+
+// Restore chip visuals from saved state before products load
+document.querySelectorAll('.sort-chip').forEach(b => {
+  b.classList.toggle('active', b.dataset.sort === currentSort);
+});
+document.querySelectorAll('.cat-chip').forEach(b => {
+  b.classList.toggle('active', b.dataset.cat === currentCatFilter);
+});
+
 loadProducts();
 renderStoreReviews();
