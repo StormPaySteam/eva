@@ -104,7 +104,14 @@ async function loadOrders() {
 
 function updateStats() {
   const pending = allOrders.filter(o => o.status === 'pending').length;
-  const revenue = allOrders.filter(o => o.status === 'done').reduce((s, o) => s + (o.total || 0), 0);
+  // Выручка = сумма ВСЕХ выполненных заказов по итоговой сумме со скидкой
+  const revenue = allOrders
+    .filter(o => o.status === 'done')
+    .reduce((s, o) => s + (o.total || 0), 0);
+  // Общий оборот (все заказы кроме отменённых) для справки
+  const turnover = allOrders
+    .filter(o => o.status !== 'cancelled')
+    .reduce((s, o) => s + (o.total || 0), 0);
   document.getElementById('stat-total').textContent = allOrders.length;
   document.getElementById('stat-pending').textContent = pending;
   document.getElementById('stat-delivery').textContent = allOrders.filter(o => o.status === 'delivery').length;
@@ -529,6 +536,7 @@ let reviewFilter = 'pending';
 async function loadReviews() {
   const c = document.getElementById('reviewsList');
   if (!c) return;
+  c.innerHTML = `<div class="admin-loading">Загрузка…</div>`;
   try {
     const snap = await getDocs(collection(db, 'reviews'));
     allReviews = snap.docs.map(d => ({ id: d.id, ...d.data() }))
@@ -542,6 +550,8 @@ async function loadReviews() {
     c.innerHTML = `<div class="admin-empty"><div class="em-icon">⚠️</div><p>Ошибка загрузки отзывов: ${e.message}</p></div>`;
   }
 }
+
+document.getElementById('refreshReviewsBtn')?.addEventListener('click', () => loadReviews());
 
 document.getElementById('reviewFilters').addEventListener('click', (e) => {
   const btn = e.target.closest('.filter-btn'); if (!btn) return;

@@ -40,6 +40,8 @@ let currentUser = null;
 let favorites = JSON.parse(localStorage.getItem('eva_favs') || '[]');
 let currentProduct = null;
 let modalQty = 1;
+let currentSort = 'default';
+let currentCatFilter = 'all';
 
 async function loadProducts() {
   try {
@@ -75,7 +77,17 @@ function productImgHTML(p, style = '') {
   return `<span>${p.emoji || '🌸'}</span>`;
 }
 
-function renderCatalog(filter = 'all') {
+function sortProducts(items) {
+  const sorted = [...items];
+  if (currentSort === 'price-asc') sorted.sort((a, b) => a.price - b.price);
+  else if (currentSort === 'price-desc') sorted.sort((a, b) => b.price - a.price);
+  else if (currentSort === 'rating') sorted.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+  else sorted.sort((a, b) => (a.sortOrder ?? 999) - (b.sortOrder ?? 999));
+  return sorted;
+}
+
+function renderCatalog(filter = currentCatFilter) {
+  currentCatFilter = filter;
   const sections = { flowers: 'flowersGrid', balloons: 'balloonsGrid', toys: 'toysGrid' };
   const active = PRODUCTS.filter(p => p.active !== false);
   for (const [cat, gridId] of Object.entries(sections)) {
@@ -83,7 +95,7 @@ function renderCatalog(filter = 'all') {
     if (!grid) continue;
     if (filter !== 'all' && filter !== cat) { grid.closest('.section').style.display = 'none'; continue; }
     grid.closest('.section').style.display = '';
-    const items = active.filter(p => p.cat === cat);
+    const items = sortProducts(active.filter(p => p.cat === cat));
     grid.innerHTML = items.map(p => `
       <div class="product-card" onclick="openProduct('${p.id}')">
         <div class="product-img" style="background:${p.color||'#ffd5dc'}">
@@ -264,7 +276,7 @@ onAuthStateChanged(auth, (user) => {
   if(user) {
     const isAdmin = user.email === ADMIN_EMAIL;
     btn.innerHTML = isAdmin ? `<span style="font-size:18px">⚙️</span>`
-      : `<img src="${user.photoURL||'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 40 40%22><circle cx=%2220%22 cy=%2220%22 r=%2220%22 fill=%22%23f9c8d4%22/><text x=%2220%22 y=%2226%22 font-size=%2218%22 text-anchor=%22middle%22>🌸</text></svg>'}" alt=""/>`;
+      : `<img src="${user.photoURL||'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 40 40%22><circle cx=%2220%22 cy=%2220%22 r=%2220%22 fill=%22%23f9c8d4%22/><text x=%2220%22 y=%2226%22 font-size=%2218%22 text-anchor=%22middle%22>🌸</text></svg>'}" alt="" style="width:32px;height:32px;border-radius:50%;object-fit:cover;display:block"/>`;
     btn.onclick = () => { window.location.href = isAdmin ? 'admin.html' : 'profile.html'; };
   } else {
     btn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`;
@@ -319,19 +331,42 @@ document.getElementById('checkoutBtn').onclick = () => {
 
 document.getElementById('placeOrderBtn').onclick = async () => {
   if(!currentUser) return;
+  const name = document.getElementById('co_name').value.trim();
+  const phone = document.getElementById('co_phone').value.trim();
+  const address = document.getElementById('co_address').value.trim();
+  const datetime = document.getElementById('co_datetime').value.trim();
+  if (!name) { showToast('Укажите имя получателя'); document.getElementById('co_name').focus(); return; }
+  if (!phone) { showToast('Укажите телефон'); document.getElementById('co_phone').focus(); return; }
+  if (!address) { showToast('Укажите адрес доставки'); document.getElementById('co_address').focus(); return; }
+  if (!datetime) { showToast('Укажите дату и время доставки'); document.getElementById('co_datetime').focus(); return; }
+
+  const rawTotal = cart.reduce((s,item)=>{ const p=PRODUCTS.find(x=>x.id===item.id); return s+(p?p.price*item.qty:0); },0);
+  let finalTotal = rawTotal;
+  if (activePromo) {
+    if (activePromo.type === 'percent') finalTotal = Math.round(rawTotal * (1 - activePromo.value / 100));
+    else finalTotal = Math.max(0, rawTotal - activePromo.value);
+  }
+
   const orderData = {
     userId: currentUser.uid,
     items: cart.map(item=>{ const p=PRODUCTS.find(x=>x.id===item.id); return {id:item.id,name:p?.name,price:p?.price,qty:item.qty,emoji:p?.emoji||'🌸'}; }),
-    total: cart.reduce((s,item)=>{ const p=PRODUCTS.find(x=>x.id===item.id); return s+(p?p.price*item.qty:0); },0),
-    recipient:document.getElementById('co_name').value,
-    phone:document.getElementById('co_phone').value,
-    address:document.getElementById('co_address').value,
-    datetime:document.getElementById('co_datetime').value,
-    note:document.getElementById('co_note').value,
+    total: finalTotal,
+    rawTotal,
+    promoCode: activePromo?.code || null,
+    promoDiscount: rawTotal - finalTotal,
+    recipient: name,
+    phone,
+    address,
+    datetime,
+    note: document.getElementById('co_note').value.trim(),
     status:'pending', createdAt:serverTimestamp()
   };
   try {
     await addDoc(collection(db,'orders'),orderData);
+    if (activePromo) {
+      try { await updateDoc(doc(db,'promoCodes',activePromo.id), { usedCount: increment(1) }); } catch(_){}
+      activePromo = null;
+    }
     cart=[]; saveCart(); updateCartBadge(); renderCartDrawer();
     closeModal('checkoutModal');
     showToast('Заказ оформлен! Мы скоро свяжемся с вами 🌸');
@@ -352,6 +387,16 @@ document.getElementById('productModalClose').onclick = () => closeModal('product
 document.querySelectorAll('.modal').forEach(m => m.addEventListener('click',e=>{ if(e.target===m) m.classList.remove('open'); }));
 document.querySelectorAll('.cat-chip').forEach(btn => {
   btn.onclick = () => { document.querySelectorAll('.cat-chip').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); renderCatalog(btn.dataset.cat); };
+});
+
+// ===== SORT CHIPS =====
+document.querySelectorAll('.sort-chip').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('.sort-chip').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentSort = btn.dataset.sort;
+    renderCatalog();
+  };
 });
 document.getElementById('authBtn').onclick = () => openModal('authModal');
 
@@ -423,12 +468,12 @@ async function loadProductReviews(productId) {
 
 async function loadStoreReviews() {
   try {
-    const q = query(collection(db, 'reviews'),
-      where('productId', '==', null),
+    const snap = await getDocs(query(collection(db, 'reviews'),
       where('approved', '==', true),
-      orderBy('createdAt', 'desc'));
-    const snap = await getDocs(q);
-    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      orderBy('createdAt', 'desc')));
+    return snap.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .filter(r => !r.productId || r.productId === 'null');
   } catch(e) { return []; }
 }
 
@@ -456,6 +501,7 @@ function reviewsListHTML(reviews) {
 
 function reviewFormHTML(productId) {
   const pid = productId || 'store';
+  const pidAttr = productId ? productId : '';
   return `
     <div class="review-form" id="reviewForm-${pid}">
       <h4>Оставить отзыв</h4>
@@ -463,7 +509,7 @@ function reviewFormHTML(productId) {
         ${[1,2,3,4,5].map(i => `<span class="star star-pick" data-val="${i}" data-pid="${pid}">☆</span>`).join('')}
       </div>
       <textarea id="reviewText-${pid}" placeholder="Ваш отзыв…" rows="3" class="review-textarea"></textarea>
-      <button class="btn-primary small" onclick="submitReview('${productId}', '${pid}')">Отправить отзыв</button>
+      <button class="btn-primary small" onclick="submitReview('${pidAttr}', '${pid}')">Отправить отзыв</button>
     </div>`;
 }
 
@@ -472,9 +518,10 @@ window.submitReview = async function(productId, pid) {
   const rating = parseInt(document.getElementById(`starPick-${pid}`)?.dataset.selected || 0);
   const text = document.getElementById(`reviewText-${pid}`)?.value?.trim();
   if (!rating) { showToast('Поставьте оценку ★'); return; }
+  const resolvedProductId = productId && productId !== 'null' ? productId : null;
   try {
     await addDoc(collection(db, 'reviews'), {
-      productId: productId || null,
+      productId: resolvedProductId,
       userId: currentUser.uid,
       userName: currentUser.displayName || currentUser.email?.split('@')[0] || 'Пользователь',
       userPhoto: currentUser.photoURL || null,
